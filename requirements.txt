@@ -1,0 +1,28 @@
+# Web / async server
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9        # Twilio posts form-encoded webhooks
+pydantic-settings==2.5.2
+
+# Telephony (only for real phone calls)
+twilio==9.3.0
+websockets>=12.0              # WebSocket client used by the simulator scripts
+
+# Speech-to-text: Sarvam AI (REST)
+requests==2.32.3
+
+# Emotion / sentiment ML
+transformers==4.44.2
+sentencepiece==0.2.0          # tokenizer for the multilingual XLM-R model
+protobuf==5.28.2              # builds the XLM-R fast tokenizer
+torch==2.4.1                  # CPU wheel is fine
+torchaudio==2.4.1             # backs the wav2vec2 tone model
+vaderSentiment==3.3.2         # lightweight text fallback
+langdetect==1.0.9             # route non-English text to the multilingual model
+numpy==1.26.4
+soundfile==0.12.1             # decode edge-tts MP3 -> PCM
+
+# Text-to-speech: edge-tts (free, no key)
+edge-tts==6.1.12
+
+# NOTE: target Python 3.11 or 3.12 (stdlib `audioop` was removed in 3.13).

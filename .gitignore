@@ -1,0 +1,19 @@
+# Virtual environment (installed third-party libraries — NOT your code)
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment / secrets
+.env
+
+# Generated audio
+bot_reply.wav
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

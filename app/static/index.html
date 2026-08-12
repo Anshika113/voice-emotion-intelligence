@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Emotion Intelligence</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%8E%99%EF%B8%8F%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --radius: 18px; --radius-sm: 12px;
+      --accent-1: #6366f1; --accent-2: #8b5cf6; --accent-3: #ec4899;
+      --joy: #f5b301; --anger: #ef4444; --sadness: #3b82f6; --fear: #a855f7;
+      --surprise: #14b8a6; --disgust: #22c55e; --neutral: #94a3b8;
+      --ok: #22c55e; --warn: #f59e0b; --err: #ef4444;
+    }
+    [data-theme="dark"] {
+      --bg: #0a0d13; --bg-2: #0e121b;
+      --panel: rgba(255,255,255,.028); --panel-solid: #12161f;
+      --border: rgba(255,255,255,.08); --border-strong: rgba(255,255,255,.14);
+      --text: #e8edf5; --text-2: #b9c2d0; --muted: #7b8698;
+      --track: rgba(255,255,255,.07); --shadow: 0 12px 40px -12px rgba(0,0,0,.6);
+      --glow: 0 0 0 1px rgba(255,255,255,.04);
+    }
+    [data-theme="light"] {
+      --bg: #eef1f7; --bg-2: #f7f9fc;
+      --panel: #ffffff; --panel-solid: #ffffff;
+      --border: #e5e9f2; --border-strong: #d6dce8;
+      --text: #131b2b; --text-2: #3c4759; --muted: #6b7688;
+      --track: #eaeef5; --shadow: 0 14px 40px -18px rgba(20,30,60,.28);
+      --glow: 0 0 0 1px rgba(20,30,60,.03);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--text);
+      background: var(--bg); overflow-x: hidden; -webkit-font-smoothing: antialiased;
+    }
+    /* ambient background */
+    .bg-orbs { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .35; }
+    .orb.a { width: 520px; height: 520px; background: var(--accent-1); top: -160px; left: -120px; }
+    .orb.b { width: 460px; height: 460px; background: var(--accent-3); bottom: -180px; right: -100px; opacity: .25; }
+    .orb.c { width: 400px; height: 400px; background: var(--accent-2); top: 40%; left: 55%; opacity: .18; }
+    [data-theme="light"] .orb { opacity: .18; }
+
+    .app { max-width: 1280px; margin: 0 auto; padding: 22px clamp(16px, 3vw, 34px) 40px; }
+
+    /* ---------- Header ---------- */
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 14px; }
+    .logo {
+      position: relative; width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff;
+      box-shadow: 0 8px 24px -6px color-mix(in srgb, var(--accent-1) 60%, transparent);
+      font-size: 22px;
+    }
+    .brand h1 {
+      margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.03em;
+      background: linear-gradient(92deg, var(--text) 30%, color-mix(in srgb, var(--accent-2) 75%, var(--text)));
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .brand p { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); font-weight: 500; letter-spacing: -.01em; }
+    .logo::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,.35); }
+    .head-actions { display: flex; align-items: center; gap: 10px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 13px; border-radius: 999px;
+      background: var(--panel); border: 1px solid var(--border); font-size: 12.5px; font-weight: 600; color: var(--text-2);
+      backdrop-filter: blur(8px);
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 20%, transparent); }
+    .dot.on { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 22%, transparent); }
+    .dot.off { background: var(--err); box-shadow: 0 0 0 4px color-mix(in srgb, var(--err) 22%, transparent); }
+    .icon-btn {
+      width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel);
+      color: var(--text-2); cursor: pointer; display: grid; place-items: center; font-size: 17px; transition: .18s;
+    }
+    .icon-btn:hover { border-color: var(--border-strong); color: var(--text); transform: translateY(-1px); }
+
+    /* ---------- Stat strip ---------- */
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+    .stat {
+      position: relative; overflow: hidden;
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: 15px 17px; box-shadow: var(--glow), inset 0 1px 0 rgba(255,255,255,.04); backdrop-filter: blur(10px);
+    }
+    .stat::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent-1), var(--accent-2), var(--accent-3)); opacity: .85; }
+    .stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+    .stat .v { font-size: 23px; font-weight: 800; margin-top: 5px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; line-height: 1.1; }
+    .stat .v small { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+    /* ---------- Layout ---------- */
+    .grid { display: grid; grid-template-columns: 380px 1fr; gap: 18px; align-items: stretch; }
+    @media (max-width: 940px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 560px) { .stats { grid-template-columns: 1fr; } }
+    .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 22px; box-shadow: var(--shadow), var(--glow), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter: blur(14px) saturate(1.2); transition: border-color .25s ease;
+    }
+    .card:hover { border-color: var(--border-strong); }
+    .card h2 {
+      font-size: 11.5px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted);
+      margin: 0 0 16px; font-weight: 700; display: flex; align-items: center; justify-content: space-between;
+    }
+    .link-btn { background: none; border: none; color: var(--accent-2); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+    .link-btn:hover { text-decoration: underline; }
+
+    /* ---------- Emotion ring ---------- */
+    .emotion-hero { display: flex; flex-direction: column; align-items: center; }
+    .ring-wrap { position: relative; width: 190px; height: 190px; }
+    .ring-wrap::before { content: ""; position: absolute; inset: 22%; border-radius: 50%;
+      background: radial-gradient(circle, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 72%); }
+    .ring-wrap svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+    .ring-track { stroke: var(--track); }
+    .ring-prog { stroke: var(--neutral); stroke-linecap: round; transition: stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1), stroke .5s; }
+    .ring-center { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; }
+    .ring-emoji { font-size: 62px; line-height: 1; filter: drop-shadow(0 6px 14px rgba(0,0,0,.25)); animation: pop .4s ease; }
+    @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
+    .emotion-name { font-size: 25px; font-weight: 800; margin-top: 14px; text-transform: capitalize; letter-spacing: -.02em; }
+    .emotion-conf { font-size: 13px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+
+    /* ---------- Mic control ---------- */
+    .mic-card { display: flex; flex-direction: column; align-items: center; transition: border-color .3s, box-shadow .3s; }
+    .mic-card.live {
+      border-color: color-mix(in srgb, #ef4444 45%, var(--border));
+      box-shadow: var(--shadow), 0 0 30px -10px rgba(239,68,68,.55), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .mic-btn {
+      position: relative; width: 92px; height: 92px; border-radius: 50%; border: none; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff; font-size: 34px;
+      display: grid; place-items: center; transition: transform .12s, box-shadow .2s;
+      box-shadow: 0 12px 30px -8px color-mix(in srgb, var(--accent-1) 65%, transparent);
+    }
+    .mic-btn:hover { transform: translateY(-2px); }
+    .mic-btn:active { transform: scale(.96); }
+    .mic-btn:disabled { opacity: .6; cursor: default; }
+    .mic-btn.rec { background: linear-gradient(135deg, #ef4444, #f43f5e); box-shadow: 0 12px 30px -8px rgba(239,68,68,.6); }
+    .mic-btn.rec::before, .mic-btn.rec::after {
+      content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #f43f5e; animation: ripple 1.8s ease-out infinite;
+    }
+    .mic-btn.rec::after { animation-delay: .9s; }
+    @keyframes ripple { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.9); opacity: 0; } }
+    .mic-status { margin-top: 16px; font-size: 13.5px; font-weight: 600; color: var(--text-2); min-height: 20px; text-align: center; }
+    .mic-timer { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 4px; }
+    /* level meter */
+    .meter { display: flex; align-items: center; gap: 3px; height: 40px; margin-top: 18px; }
+    .meter .bar { width: 4px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--accent-2) 55%, transparent); transition: height .07s linear; }
+
+    /* ---------- Distribution bars ---------- */
+    .bars { display: flex; flex-direction: column; gap: 11px; }
+    .bar-row { display: grid; grid-template-columns: 92px 1fr 40px; align-items: center; gap: 10px; }
+    .bar-lab { font-size: 12.5px; font-weight: 600; color: var(--text-2); display: flex; align-items: center; gap: 6px; text-transform: capitalize; }
+    .bar-track { background: var(--track); border-radius: 999px; height: 8px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; border-radius: 999px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+    .bar-val { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: right; }
+
+    /* ---------- Timeline ---------- */
+    /* Right column: card fills the column so the feed (not the page) scrolls */
+    .timeline-col { position: relative; min-height: 440px; }
+    .timeline-card { position: absolute; inset: 0; display: flex; flex-direction: column; }
+    .partial { min-height: 22px; margin-bottom: 12px; font-size: 14px; color: var(--muted); font-style: italic; display: flex; align-items: center; gap: 8px; }
+    .partial .live { display: none; }
+    .partial.active .live { display: inline-flex; }
+    .live { align-items: center; gap: 4px; }
+    .live i { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-2); animation: blink 1.2s infinite; }
+    .live i:nth-child(2){ animation-delay: .2s; } .live i:nth-child(3){ animation-delay: .4s; }
+    @keyframes blink { 0%,100%{ opacity:.2; } 50%{ opacity:1; } }
+    .feed { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-right: 6px; }
+    .feed::-webkit-scrollbar { width: 8px; }
+    .feed::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+    .msg { display: flex; gap: 12px; animation: slideIn .35s cubic-bezier(.2,.8,.2,1); }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .avatar { width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center; font-size: 19px; border: 1px solid var(--border); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+    .bubble { flex: 1; min-width: 0; background: var(--bg-2); border: 1px solid var(--border); border-left-width: 3px; border-radius: 14px; border-top-left-radius: 4px; padding: 11px 15px; }
+    .bubble .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .chip { font-size: 11px; font-weight: 700; padding: 4px 11px; border-radius: 999px; text-transform: capitalize; display: inline-flex; align-items: center; gap: 5px; letter-spacing: .01em; }
+    .bubble .time { font-family: var(--mono); font-size: 10px; color: var(--muted); flex-shrink: 0; }
+    .bubble .text { font-size: 14.5px; line-height: 1.55; color: var(--text); word-wrap: break-word; }
+    .msg.bot .avatar { background: color-mix(in srgb, var(--surprise) 18%, transparent); border-color: color-mix(in srgb, var(--surprise) 40%, transparent); }
+    .msg.bot .bubble { background: color-mix(in srgb, var(--surprise) 8%, var(--bg-2)); border-color: color-mix(in srgb, var(--surprise) 22%, transparent); }
+    .msg.bot .chip { background: color-mix(in srgb, var(--surprise) 20%, transparent); color: var(--surprise); }
+    .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 48px 20px; margin: auto; }
+    .empty .big { font-size: 40px; margin-bottom: 12px; opacity: .5; }
+
+    /* ---------- Emotion-over-time chart ---------- */
+    .chart-card { margin-top: 18px; }
+    .chart-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+    .chart-scale { display: flex; gap: 16px; font-size: 11px; color: var(--muted); font-weight: 600; }
+    .chart-scale span { display: inline-flex; align-items: center; gap: 6px; }
+    .chart-scale i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+    .chart-wrap { position: relative; width: 100%; height: 240px; margin-top: 4px; }
+    #chart { width: 100%; height: 100%; display: block; }
+    .axis-label { fill: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+    #chart circle { cursor: pointer; transition: r .15s; }
+    #chart circle:hover { r: 6; }
+    .chart-tip {
+      position: absolute; pointer-events: none; transform: translate(-50%, -125%);
+      background: var(--panel-solid); border: 1px solid var(--border-strong); border-radius: 10px;
+      padding: 7px 11px; font-size: 12.5px; font-weight: 700; box-shadow: var(--shadow);
+      opacity: 0; transition: opacity .15s; white-space: nowrap;
+    }
+    .chart-tip .t { font-family: var(--mono); font-size: 10px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+    .chart-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+
+    footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 26px; }
+    footer b { color: var(--text-2); font-weight: 600; }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="bg-orbs"><div class="orb a"></div><div class="orb b"></div><div class="orb c"></div></div>
+
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">🎙️</div>
+        <div>
+          <h1>Voice Emotion Intelligence</h1>
+          <p>Real-time sentiment from speech — Hindi · Hinglish · English</p>
+        </div>
+      </div>
+      <div class="head-actions">
+        <span class="pill"><span id="dot" class="dot"></span><span id="statusText">connecting…</span></span>
+        <button id="voiceBtn" class="icon-btn" title="Toggle bot voice" aria-label="Toggle bot voice">🔊</button>
+        <button id="themeBtn" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+      </div>
+    </header>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Utterances</div><div class="v" id="statCount">0</div></div>
+      <div class="stat"><div class="k">Dominant emotion</div><div class="v" id="statDom">—</div></div>
+      <div class="stat"><div class="k">Session</div><div class="v" id="statTime">00:00</div></div>
+    </div>
+
+    <div class="grid">
+      <!-- LEFT -->
+      <div class="col">
+        <section class="card">
+          <h2>Current Emotion</h2>
+          <div class="emotion-hero">
+            <div class="ring-wrap">
+              <svg viewBox="0 0 120 120">
+                <circle class="ring-track" cx="60" cy="60" r="52" fill="none" stroke-width="10" />
+                <circle id="ring" class="ring-prog" cx="60" cy="60" r="52" fill="none" stroke-width="10"
+                        stroke-dasharray="326.7" stroke-dashoffset="326.7" />
+              </svg>
+              <div class="ring-center">
+                <div id="emoji" class="ring-emoji">😐</div>
+              </div>
+            </div>
+            <div id="label" class="emotion-name">Awaiting</div>
+            <div id="conf" class="emotion-conf">Press the mic to begin</div>
+          </div>
+        </section>
+
+        <section class="card mic-card">
+          <h2 style="align-self:stretch">Microphone</h2>
+          <button id="micBtn" class="mic-btn" aria-label="Start talking">🎤</button>
+          <div id="micStatus" class="mic-status">Tap to start talking</div>
+          <div id="micTimer" class="mic-timer"></div>
+          <div id="meter" class="meter" aria-hidden="true"></div>
+        </section>
+
+        <section class="card">
+          <h2>Emotion Distribution</h2>
+          <div id="bars" class="bars"></div>
+        </section>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="col timeline-col">
+        <section class="card timeline-card">
+          <h2>Live Transcript &amp; Timeline <button id="clearBtn" class="link-btn">Clear</button></h2>
+          <div id="partial" class="partial"><span class="live"><i></i><i></i><i></i></span><span id="partialText"></span></div>
+          <div id="feed" class="feed">
+            <div class="empty"><div class="big">💬</div>Press <b>“🎤”</b> and start speaking.<br />Your emotion appears here in real time.</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <section class="card chart-card">
+      <div class="chart-head">
+        <h2 style="margin:0">Emotion Over Time</h2>
+        <div class="chart-scale">
+          <span><i style="background:#22c55e"></i>Positive</span>
+          <span><i style="background:var(--neutral)"></i>Neutral</span>
+          <span><i style="background:#ef4444"></i>Negative</span>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="chart" preserveAspectRatio="none"></svg>
+        <div id="chartTip" class="chart-tip"></div>
+        <div id="chartEmpty" class="chart-empty">Your mood trajectory will appear here as you speak.</div>
+      </div>
+    </section>
+
+    <footer>Speech-to-text by <b>Sarvam AI</b> · emotion by local models · voice by <b>edge-tts</b></footer>
+  </div>
+
+  <script>
+    const EMO = {
+      joy:      { emoji: "😊", label: "Joy" },
+      anger:    { emoji: "😠", label: "Anger" },
+      sadness:  { emoji: "😢", label: "Sadness" },
+      fear:     { emoji: "😨", label: "Fear" },
+      surprise: { emoji: "😲", label: "Surprise" },
+      disgust:  { emoji: "🤢", label: "Disgust" },
+      neutral:  { emoji: "😐", label: "Neutral" },
+    };
+    const ORDER = ["joy","anger","sadness","fear","surprise","disgust","neutral"];
+    const cssVar = (k) => getComputedStyle(document.documentElement).getPropertyValue("--" + k).trim();
+    const RING_C = 2 * Math.PI * 52;
+
+    // ---------- theme ----------
+    const themeBtn = document.getElementById("themeBtn");
+    function setTheme(t) {
+      document.documentElement.setAttribute("data-theme", t);
+      themeBtn.textContent = t === "dark" ? "🌙" : "☀️";
+      try { localStorage.setItem("vei-theme", t); } catch (e) {}
+    }
+    setTheme((() => { try { return localStorage.getItem("vei-theme") || "dark"; } catch (e) { return "dark"; } })());
+    themeBtn.onclick = () => setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+
+    // ---------- bot voice (browser speech synthesis) ----------
+    const voiceBtn = document.getElementById("voiceBtn");
+    let voiceOn = (() => { try { return localStorage.getItem("vei-voice") !== "0"; } catch (e) { return true; } })();
+    voiceBtn.textContent = voiceOn ? "🔊" : "🔇";
+    if (window.speechSynthesis) { try { window.speechSynthesis.getVoices(); } catch (e) {} }
+    voiceBtn.onclick = () => {
+      voiceOn = !voiceOn;
+      voiceBtn.textContent = voiceOn ? "🔊" : "🔇";
+      try { localStorage.setItem("vei-voice", voiceOn ? "1" : "0"); } catch (e) {}
+      if (!voiceOn && window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+    function speak(text) {
+      if (!voiceOn || !text || !window.speechSynthesis) return;
+      const synth = window.speechSynthesis;
+      synth.cancel(); // don't overlap replies
+      const u = new SpeechSynthesisUtterance(text);
+      const hindi = /[ऀ-ॿ]/.test(text);
+      u.lang = hindi ? "hi-IN" : "en-US";
+      u.rate = 1; u.pitch = 1;
+      const pref = hindi ? "hi" : "en";
+      const langV = synth.getVoices().filter((v) => (v.lang || "").toLowerCase().startsWith(pref));
+      // prefer a female voice by name (no gender field exists in the API)
+      const FEMALE = /(female|zira|aria|jenny|heera|kalpana|swara|neerja|samantha|victoria|susan|linda|hazel|eva|google)/i;
+      const voice = langV.find((v) => FEMALE.test(v.name)) || langV[0];
+      if (voice) u.voice = voice;
+      u.pitch = 1.05; // slightly brighter
+      synth.speak(u);
+    }
+
+    // ---------- distribution bars ----------
+    const barsEl = document.getElementById("bars");
+    const fills = {}, vals = {};
+    for (const e of ORDER) {
+      const row = document.createElement("div"); row.className = "bar-row";
+      row.innerHTML =
+        `<span class="bar-lab">${EMO[e].emoji} ${EMO[e].label}</span>` +
+        `<span class="bar-track"><span class="bar-fill" style="background:${cssVar(e)}"></span></span>` +
+        `<span class="bar-val">0%</span>`;
+      barsEl.appendChild(row);
+      fills[e] = row.querySelector(".bar-fill");
+      vals[e] = row.querySelector(".bar-val");
+    }
+
+    // ---------- current emotion ----------
+    const ring = document.getElementById("ring");
+    const emojiEl = document.getElementById("emoji");
+    const labelEl = document.getElementById("label");
+    const confEl = document.getElementById("conf");
+    let lastEmoji = "😐";
+
+    function renderEmotion(fused) {
+      if (!fused) return;
+      const c = cssVar(fused.label) || cssVar("neutral");
+      ring.style.stroke = c;
+      ring.style.strokeDashoffset = RING_C * (1 - (fused.score || 0));
+      if (EMO[fused.label] && EMO[fused.label].emoji !== lastEmoji) {
+        emojiEl.textContent = EMO[fused.label].emoji;
+        emojiEl.style.animation = "none"; void emojiEl.offsetWidth; emojiEl.style.animation = "pop .4s ease";
+        lastEmoji = EMO[fused.label].emoji;
+      }
+      labelEl.textContent = (EMO[fused.label] && EMO[fused.label].label) || fused.label;
+      labelEl.style.color = c;
+      emojiEl.style.filter = `drop-shadow(0 6px 14px rgba(0,0,0,.3)) drop-shadow(0 0 22px ${c}66)`;
+      confEl.textContent = Math.round((fused.score || 0) * 100) + "% confidence";
+      const scores = fused.scores || {};
+      for (const e of ORDER) {
+        const pct = Math.round((scores[e] || 0) * 100);
+        fills[e].style.width = pct + "%";
+        vals[e].textContent = pct + "%";
+      }
+    }
+
+    // ---------- timeline + stats ----------
+    const feedEl = document.getElementById("feed");
+    const partialEl = document.getElementById("partial");
+    const partialText = document.getElementById("partialText");
+    const statCount = document.getElementById("statCount");
+    const statDom = document.getElementById("statDom");
+    let feedHas = false, count = 0;
+    const emoCounts = {};
+
+    function updateDominant(label) {
+      emoCounts[label] = (emoCounts[label] || 0) + 1;
+      let best = null, n = -1;
+      for (const k in emoCounts) if (emoCounts[k] > n) { n = emoCounts[k]; best = k; }
+      if (best) statDom.innerHTML = `${EMO[best].emoji} <span style="color:${cssVar(best)}">${EMO[best].label}</span>`;
+    }
+    function fmtTime(ts) { return new Date((ts || Date.now() / 1000) * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
+
+    function addCaller(msg) {
+      if (!feedHas) { feedEl.innerHTML = ""; feedHas = true; }
+      const fused = msg.emotion && msg.emotion.fused;
+      const label = fused ? fused.label : "neutral";
+      const c = cssVar(label);
+      const el = document.createElement("div"); el.className = "msg";
+      el.innerHTML =
+        `<div class="avatar" style="background:${c}22;border-color:${c}55">🧑</div>` +
+        `<div class="bubble" style="border-left-color:${c}">` +
+          `<div class="meta"><span class="chip" style="background:${c}22;color:${c}">${EMO[label].emoji} ${EMO[label].label}` +
+          (fused ? ` · ${Math.round(fused.score * 100)}%` : ``) + `</span><span class="time">${fmtTime(msg.ts)}</span></div>` +
+          `<div class="text"></div></div>`;
+      el.querySelector(".text").textContent = msg.transcript || "";
+      feedEl.prepend(el);
+      count++; statCount.textContent = count; updateDominant(label);
+      pushChart(label, msg.ts);
+    }
+    function addBot(msg) {
+      if (!feedHas) { feedEl.innerHTML = ""; feedHas = true; }
+      const el = document.createElement("div"); el.className = "msg bot";
+      el.innerHTML =
+        `<div class="avatar">🤖</div>` +
+        `<div class="bubble"><div class="meta"><span class="chip">Assistant</span><span class="time">${fmtTime()}</span></div>` +
+        `<div class="text"></div></div>`;
+      el.querySelector(".text").textContent = msg.reply || "";
+      feedEl.prepend(el);
+      speak(msg.reply);
+    }
+    document.getElementById("clearBtn").onclick = () => {
+      feedEl.innerHTML = `<div class="empty"><div class="big">💬</div>Cleared. Press <b>“🎤”</b> to talk again.</div>`;
+      feedHas = false; count = 0; statCount.textContent = "0"; statDom.textContent = "—";
+      for (const k in emoCounts) delete emoCounts[k];
+      history.length = 0; renderChart();
+    };
+
+    // ---------- emotion-over-time chart ----------
+    const VALENCE = { joy: 1, surprise: 0.5, neutral: 0, disgust: -0.6, fear: -0.7, sadness: -0.8, anger: -1 };
+    const history = [];
+    const chartWrap = document.querySelector(".chart-wrap");
+    const chartSvg = document.getElementById("chart");
+    const chartTip = document.getElementById("chartTip");
+    const chartEmpty = document.getElementById("chartEmpty");
+
+    function pushChart(label, ts) {
+      history.push({ v: VALENCE[label] != null ? VALENCE[label] : 0, label, time: fmtTime(ts) });
+      if (history.length > 40) history.shift();
+      renderChart();
+    }
+    function smoothPath(pts) {
+      if (pts.length < 2) return pts.length ? `M ${pts[0].x} ${pts[0].y} L ${pts[0].x + 0.01} ${pts[0].y}` : "";
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+        const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+        d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+      }
+      return d;
+    }
+    window.showTip = (x, y, label, time) => {
+      chartTip.innerHTML = `${EMO[label].emoji} ${EMO[label].label}<div class="t">${time}</div>`;
+      chartTip.style.left = x + "px"; chartTip.style.top = y + "px"; chartTip.style.opacity = "1";
+    };
+    window.hideTip = () => { chartTip.style.opacity = "0"; };
+
+    function renderChart() {
+      const W = chartWrap.clientWidth || 640, H = chartWrap.clientHeight || 240;
+      chartSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+      if (history.length === 0) { chartSvg.innerHTML = ""; chartEmpty.style.display = "grid"; return; }
+      chartEmpty.style.display = "none";
+      const padL = 62, padR = 20, padT = 18, padB = 22, n = history.length;
+      const xOf = (i) => n === 1 ? padL + (W - padL - padR) / 2 : padL + (i / (n - 1)) * (W - padL - padR);
+      const yOf = (v) => padT + (1 - (v + 1) / 2) * (H - padT - padB);
+      const pts = history.map((h, i) => ({ x: xOf(i), y: yOf(h.v), label: h.label, time: h.time }));
+
+      let grid = "";
+      [[1, "Positive"], [0, "Neutral"], [-1, "Negative"]].forEach(([v, lab]) => {
+        const y = yOf(v);
+        grid += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="1" ${v !== 0 ? 'stroke-dasharray="3 6"' : ""}/>`;
+        grid += `<text x="10" y="${y + 3.5}" class="axis-label">${lab}</text>`;
+      });
+      const line = smoothPath(pts);
+      const area = `${line} L ${pts[n - 1].x.toFixed(1)} ${yOf(0)} L ${pts[0].x.toFixed(1)} ${yOf(0)} Z`;
+      const dots = pts.map((p) =>
+        `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4.5" fill="${cssVar(p.label)}" stroke="var(--panel-solid)" stroke-width="2" ` +
+        `onmouseenter="showTip(${p.x.toFixed(1)},${p.y.toFixed(1)},'${p.label}','${p.time}')" onmouseleave="hideTip()"/>`
+      ).join("");
+
+      chartSvg.innerHTML =
+        `<defs>
+           <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="0%" stop-color="#22c55e"/><stop offset="50%" stop-color="#f5b301"/><stop offset="100%" stop-color="#ef4444"/>
+           </linearGradient>
+           <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+             <stop offset="0%" stop-color="var(--accent-2)" stop-opacity="0.18"/><stop offset="100%" stop-color="var(--accent-2)" stop-opacity="0"/>
+           </linearGradient>
+         </defs>
+         ${grid}
+         <path d="${area}" fill="url(#areaGrad)"/>
+         <path d="${line}" fill="none" stroke="url(#lineGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+         ${dots}`;
+    }
+    if (window.ResizeObserver) new ResizeObserver(() => renderChart()).observe(chartWrap);
+    renderChart();
+
+    // ---------- session timer ----------
+    const statTime = document.getElementById("statTime");
+    let started = null;
+    setInterval(() => {
+      if (!started) return;
+      const s = Math.floor((Date.now() - started) / 1000);
+      statTime.textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+    }, 1000);
+
+    // ---------- dashboard websocket ----------
+    function setStatus(state, text) {
+      document.getElementById("dot").className = "dot " + state;
+      document.getElementById("statusText").textContent = text;
+    }
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${proto}://${location.host}/ws/dashboard`);
+      ws.onopen = () => setStatus("on", "Connected");
+      ws.onclose = () => { setStatus("off", "Reconnecting…"); setTimeout(connect, 2000); };
+      ws.onerror = () => ws.close();
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === "partial") {
+          partialText.textContent = msg.transcript || "";
+          partialEl.classList.toggle("active", !!msg.transcript);
+        } else if (msg.type === "final") {
+          partialText.textContent = ""; partialEl.classList.remove("active");
+          renderEmotion(msg.emotion && msg.emotion.fused);
+          addCaller(msg);
+        } else if (msg.type === "bot") {
+          addBot(msg);
+        }
+      };
+    }
+    connect();
+
+    // ---------- talk from the browser ----------
+    const micBtn = document.getElementById("micBtn");
+    const micStatus = document.getElementById("micStatus");
+    const micTimer = document.getElementById("micTimer");
+    const meterEl = document.getElementById("meter");
+    const METER_BARS = 28;
+    for (let i = 0; i < METER_BARS; i++) { const b = document.createElement("span"); b.className = "bar"; meterEl.appendChild(b); }
+    const meterBars = [...meterEl.children];
+
+    let micWs = null, audioCtx = null, source = null, processor = null, analyser = null, micStream = null;
+    let recording = false, rafId = null, recStart = null, timerId = null;
+
+    function floatTo16kPCM(input, inRate) {
+      const outRate = 16000, ratio = inRate / outRate, outLen = Math.floor(input.length / ratio);
+      const out = new Int16Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        const idx = i * ratio, i0 = Math.floor(idx), frac = idx - i0;
+        const s = (input[i0] || 0) * (1 - frac) + (input[i0 + 1] || 0) * frac;
+        const v = Math.max(-1, Math.min(1, s));
+        out[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
+      }
+      return out;
+    }
+    function drawMeter() {
+      if (!analyser) return;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(buf);
+      const step = Math.floor(buf.length / METER_BARS);
+      for (let i = 0; i < METER_BARS; i++) {
+        const v = buf[i * step] / 255;
+        meterBars[i].style.height = (6 + v * 34).toFixed(1) + "px";
+        meterBars[i].style.background = `color-mix(in srgb, ${cssVar("accent-2")} ${40 + v * 55}%, transparent)`;
+      }
+      rafId = requestAnimationFrame(drawMeter);
+    }
+
+    async function startTalking() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      micWs = new WebSocket(`${proto}://${location.host}/mic`);
+      micWs.binaryType = "arraybuffer";
+      await new Promise((res, rej) => { micWs.onopen = res; micWs.onerror = () => rej(new Error("socket failed")); });
+
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const inRate = audioCtx.sampleRate;
+      source = audioCtx.createMediaStreamSource(micStream);
+      analyser = audioCtx.createAnalyser(); analyser.fftSize = 128; source.connect(analyser);
+      processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (!micWs || micWs.readyState !== 1) return;
+        micWs.send(floatTo16kPCM(e.inputBuffer.getChannelData(0), inRate).buffer);
+      };
+      source.connect(processor); processor.connect(audioCtx.destination);
+
+      recording = true;
+      micBtn.classList.add("rec"); micBtn.textContent = "⏹";
+      document.querySelector(".mic-card").classList.add("live");
+      micStatus.textContent = "Listening — speak, then pause";
+      if (!started) started = Date.now();
+      recStart = Date.now();
+      timerId = setInterval(() => {
+        const s = Math.floor((Date.now() - recStart) / 1000);
+        micTimer.textContent = "● " + String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+      }, 500);
+      drawMeter();
+    }
+    function stopTalking() {
+      recording = false;
+      micBtn.classList.remove("rec"); micBtn.textContent = "🎤";
+      document.querySelector(".mic-card").classList.remove("live");
+      micStatus.textContent = "Tap to start talking"; micTimer.textContent = "";
+      if (rafId) cancelAnimationFrame(rafId);
+      if (timerId) clearInterval(timerId);
+      meterBars.forEach((b) => (b.style.height = "6px"));
+      try { if (processor) { processor.onaudioprocess = null; processor.disconnect(); } } catch (e) {}
+      try { if (source) source.disconnect(); } catch (e) {}
+      try { if (micStream) micStream.getTracks().forEach((t) => t.stop()); } catch (e) {}
+      try { if (audioCtx) audioCtx.close(); } catch (e) {}
+      if (micWs && micWs.readyState === 1) {
+        micWs.send(JSON.stringify({ event: "stop" }));
+        setTimeout(() => { try { micWs.close(); } catch (e) {} }, 600);
+      }
+    }
+    micBtn.onclick = async () => {
+      if (recording) return stopTalking();
+      micBtn.disabled = true; micStatus.textContent = "Requesting microphone…";
+      try { await startTalking(); }
+      catch (err) { micStatus.textContent = "Mic error: " + (err && err.message ? err.message : err); stopTalking(); }
+      finally { micBtn.disabled = false; }
+    };
+  </script>
+</body>
+</html>
