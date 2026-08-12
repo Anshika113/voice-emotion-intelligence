@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Voice Emotion Intelligence
 
 A real-time voice bot that detects the speaker's **emotion** as they talk — in
@@ -94,3 +95,6 @@ tests/
 | `ENABLE_AUDIO_EMOTION` | `false` | tone model is noisy on mic audio; text is far more accurate |
 | `ENABLE_BOT_REPLY` | `true` | conversational replies on |
 | `ANTHROPIC_API_KEY` | *(optional)* | premium replies via Claude |
+=======
+# voice-emotion-intelligence
+>>>>>>> b361f7ff26a8a430d9611a341f59be2212958a70
